@@ -1,20 +1,30 @@
 import time
 import csv
+import pickle
 
 def parse_tokens():
     tp = time.time()
-    punc = ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")", ":", ";", "'", ",", ".", "?", '"',"`", "-", "_", "+", "=", "[", "]", "{", "}", "|"]
+    remove = ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")", ":", ";", "'", ",", ".", "?", '"',"`", "-", "_", "+", "=", "[", "]", "{", "}", "|", "0", "1", "2", "3", "4", "5", "6","7","8", "9"]
     docnos = []
     doc_text = [] 
     file = open('wsj.xml', 'r')
     words = file.read().lower()
     words = words.replace("<", " <")
-    for i in range(len(punc)):
-            if punc[i] == "-" or punc[i] == "." or punc[i] == ",":
-                words = words.replace(punc[i], " ")
-            else:
-                words = words.replace(punc[i], "")
+    words = words.replace(".", " .")
+    words = words.replace(",", " ,")
+    words = words.split()
 
+    for i in range(len(words)):
+        if words[i] == "<docno>":
+            docnos.append(words[i+1])
+    #print(docnos)
+
+    words = ' '.join(words)
+    for i in range(len(remove)):
+            if remove[i] == "-":
+                words = words.replace(remove[i], " ")
+            else:
+                words = words.replace(remove[i], "")
     words = ' '.join(words.split())
     words = words.split()
 
@@ -25,7 +35,6 @@ def parse_tokens():
                 txt = txt + " " + words[i]
         else:
             if txt != "":
-                txt = txt.replace("/", " ")
                 doc_text.append(txt)
             txt = ""
         if i == len(words)-1:
@@ -33,21 +42,23 @@ def parse_tokens():
             doc_text.append(txt)
     
     for i in range(len(doc_text)):
-        temp = str(doc_text[i]).split()
+        doc_text[i] = str(doc_text[i]).split()
+        temp = []
+        for x in range(len(doc_text[i])):
+            if doc_text[i][x].isalpha():
+                temp.append(doc_text[i][x])
+                #print(doc_text[i][x])
         doc_text[i] = temp
-        if i == len(doc_text)-1:
-            doc_text[i] = doc_text[i][:-2]
-        for x in range(len(doc_text[i])-1):
-            if x == 0:
-                val = doc_text[i][2]
-                doc_text[i][0] = doc_text[i][0] + "-" + doc_text[i][1]
-                del doc_text[i][1]
-                doc_text[i][1] = val
-                docnos.append(doc_text[i][0])
-            #print(doc_text[i][x])
         #print("\n")
+            
+        
+
+    with open('docnos.txt', mode='w') as file:
+        for docid in docnos:
+            file.write(docid+"\n")
+        
+
     print("parsed tokens in: ", (time.time() - tp) / 60, " minutes")
-    print(doc_text[9])
     return doc_text
 
 def binary_search(array, target, low, high):
@@ -107,10 +118,14 @@ def build_inverted_index():
 
     
     print("writing inverted index to file")
-    print(unique[-1])
     with open('index.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerows(inverted_index)
+
+    #read .bin with pickle.load
+    with open('inverted_index.bin', mode='wb') as file2:
+        pickle.dump(inverted_index, file2)
+        
 
     with open('unique.txt', mode='w') as file:
         for word in unique:
